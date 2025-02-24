@@ -13,8 +13,8 @@ from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-data_path = r".\SITP Project Practice\Data.xlsx"
-label_path = r".\SITP Project Practice\DataLabel.xlsx"
+data_path = r"E:\_SITP\Data.xlsx"
+label_path = r"E:\_SITP\DataLabel.xlsx"
 
 data = pd.read_excel(data_path)
 label = pd.read_excel(label_path)
