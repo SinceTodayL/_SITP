@@ -29,15 +29,22 @@ if __name__ == "__main__":
 
 
     SupervisedTraining_ByStep_Order1(X=X, y=y, 
-                                     train_model1=KNeighborsClassifier(n_neighbors=10),
-                                     train_model2=KNeighborsClassifier(n_neighbors=5),
-                                     IfStandard=True, IfSMOTE1=True, IfSMOTE2=True,IfVisualize=True)
+    train_model1=MLPClassifier(hidden_layer_sizes=(100, 50), activation='relu', solver='adam', max_iter=2000, random_state=42),
+    train_model2=MLPClassifier(hidden_layer_sizes=(100, 50), activation='relu', solver='adam', max_iter=300, random_state=42),
+    IfStandard=True, IfSMOTE1=True, IfSMOTE2=True, IfVisualize=True)
+
+#   SupervisedTraining_ByStep_Order1(X=X, y=y, 
+#   train_model1=RandomForestClassifier(n_estimators=400, random_state=42),
+#   train_model2=RandomForestClassifier(n_estimators=100, random_state=42),
+#   IfStandard=True, IfSMOTE1=True, IfSMOTE2=True, IfVisualize=True)
+
+
 
 
 '''
     TODO:
-        1. threshold optimization
-        2. dimension reduction
+        1. threshold optimization 
+        2. dimension reduction 
         3. 改为分步检测
         4. 模型堆叠
 

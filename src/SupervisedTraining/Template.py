@@ -7,13 +7,13 @@ from sklearn.model_selection import KFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 
-from sklearn.metrics import confusion_matrix, classification_report, roc_curve, auc
+from sklearn.metrics import confusion_matrix, classification_report, roc_curve, auc, precision_recall_curve
 from imblearn.metrics import geometric_mean_score
 
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-
+from threshold_opt import ThresholdOptimization_F1Score, ThresholdOptimization_Gmean
 
 def SupervisedTraining(X, y, train_model, 
                        IfStandard, IfSMOTE, IfVisualize,
@@ -22,6 +22,7 @@ def SupervisedTraining(X, y, train_model,
 
     class_name = ["Normal", "Mild", "Sereve"]
     final_preds = np.zeros_like(y)
+    final_preds_proba = np.zeros_like(y)
 
     kf = KFold(n_splits=5, shuffle=True, random_state=42)
     for flod_idx, (train_idx, test_idx) in enumerate(kf.split(X)):
@@ -39,16 +40,12 @@ def SupervisedTraining(X, y, train_model,
 
         train_model.fit(X_train, y_train)
 
-        if not threshold_opt:
-            y_pred = train_model.predict(X_test)
-            final_preds[test_idx] = y_pred
-    #   else:
-    #       TODO
+        y_pred = train_model.predict(X_test)
+        final_preds[test_idx] = y_pred
 
         if IfVisualize:
             print(f"\nFlod {flod_idx + 1} Classification Report:")
             print(classification_report(y_test, final_preds[test_idx], target_names=class_name))
-
 
     if IfVisualize:
         # confusion matrix
@@ -97,9 +94,13 @@ def SupervisedTraining(X, y, train_model,
     print(f"Gmean: {gmean_test: .4f}")
 
 
+
+
+
 '''
     先分出 Normal and Abnormal
     再分出 Abnormal 中的 Mild and Sereve
+    转化为 二分类 问题
 '''
 def SupervisedTraining_ByStep_Order1(X, y, train_model1, train_model2, 
                        IfStandard, IfSMOTE1, IfSMOTE2, IfVisualize,
@@ -131,8 +132,12 @@ def SupervisedTraining_ByStep_Order1(X, y, train_model1, train_model2,
         if not threshold_opt:
             train_model1.fit(X_train_layer1, y_train_layer1)                    
             y_pred_layer1 = train_model1.predict(X_test)     
-    #   else:
-    #       TODO
+        else:
+            train_model1.fit(X_train_layer1, y_train_layer1) 
+            y_prob_layer1 = train_model1.predict_proba(X_test)[:, 1]  
+
+            best_threshold1 = ThresholdOptimization_F1Score(y_test, y_prob_layer1, {0:1, 1:1})  
+            y_pred_layer1 = (y_prob_layer1 >= best_threshold1).astype(int)  
 
         if IfVisualize:
             y_test_transform = np.where(y_test == 0, 0, 1)
@@ -159,8 +164,12 @@ def SupervisedTraining_ByStep_Order1(X, y, train_model1, train_model2,
             if not threshold_opt:
                 train_model2.fit(X_train_abnormal, y_train_layer2)  
                 y_pred_abnormal = train_model2.predict(X_test_abnormal)
-        #   else:
-        #       TODO
+            else:
+                train_model1.fit(X_train_layer1, y_train_layer1) 
+                y_prob_layer1 = train_model1.predict_proba(X_test)[:, 1]  
+
+                best_threshold1 = ThresholdOptimization_F1Score(y_test, y_prob_layer1, {0:1, 1:1})  
+                y_pred_layer1 = (y_prob_layer1 >= best_threshold1).astype(int)
 
             y_pred_abnormal_original = np.where(y_pred_abnormal == 0, 1, 2)
 
