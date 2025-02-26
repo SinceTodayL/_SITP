@@ -26,9 +26,6 @@ class DimensionReducer:
         if self.method == 'pca':
             self.model = PCA(n_components=self._resolve_pca_components(X), 
                             random_state=self.random_state) 
-            
-        elif self.method == 'lda':
-            self.model = LinearDiscriminantAnalysis(n_components=min(X.shape[1],  len(np.unique(y))-1)) 
 
         elif self.method == 'tsne':
             self.model = TSNE(n_components=self.n_components or 2, 
@@ -44,7 +41,7 @@ class DimensionReducer:
         elif self.method == 'svd':
             self.model = TruncatedSVD(n_components=self.n_components or 10,
                                      random_state=self.random_state) 
-            
+        
         elif self.method == 'ae':
             self._build_autoencoder(X.shape[1]) 
             self.model.fit(X,  X, epochs=100, batch_size=32, verbose=0)
@@ -75,6 +72,4 @@ class DimensionReducer:
         decoded = tf.keras.layers.Dense(input_dim,  activation='sigmoid')(encoded)
         self.model  = tf.keras.Model(input_layer,  decoded)
         self.model.compile(optimizer='adam',  loss='mse')
-
-
 

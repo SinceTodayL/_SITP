@@ -1,11 +1,14 @@
 import pandas as pd
 import numpy as np
 
-from template import SupervisedTraining
+from template import SupervisedTraining, SupervisedTraining_ByStep_Order1
 from dim_reducer import DimensionReducer
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.svm import SVC
 
 if __name__ == "__main__":
 
@@ -18,8 +21,24 @@ if __name__ == "__main__":
     X = data.iloc[ : ,  : ].values
     y = label.iloc[ : ].values.squeeze()
 
-    X_res = DimensionReducer(method='ae', n_components=3).fit_transform(X)
+    X_res = DimensionReducer(method='pca', n_components=7).fit_transform(X)
 
-    SupervisedTraining(X=X_res, y=y, train_model=RandomForestClassifier(n_estimators=300, random_state=42), 
-                       IfStandard=True, IfSMOTE=True, IfVisualize=True, 
-                       )
+
+#    SupervisedTraining(X=X_res, y=y, train_model=SVC(kernel='linear', probability=True), 
+#                      IfStandard=True, IfSMOTE=True, IfVisualize=True, 
+
+
+    SupervisedTraining_ByStep_Order1(X=X, y=y, 
+                                     train_model1=KNeighborsClassifier(n_neighbors=10),
+                                     train_model2=KNeighborsClassifier(n_neighbors=5),
+                                     IfStandard=True, IfSMOTE1=True, IfSMOTE2=True,IfVisualize=True)
+
+
+'''
+    TODO:
+        1. threshold optimization
+        2. dimension reduction
+        3. 改为分步检测
+        4. 模型堆叠
+
+'''
