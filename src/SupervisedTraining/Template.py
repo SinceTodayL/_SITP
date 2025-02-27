@@ -93,7 +93,7 @@ def SupervisedTraining(X, y, train_model,
     print(f"weighted F1-score: {weighted_f1:.4f}")
     print(f"Gmean: {gmean_test: .4f}")
 
-
+    return final_preds
 
 
 
