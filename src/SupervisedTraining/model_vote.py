@@ -30,10 +30,10 @@ if __name__ == "__main__":
 
     class_name = ["Normal", "Mild", "Sereve"]
 
-    train_models = [MLPClassifier(hidden_layer_sizes=(100, 50), activation='relu', solver='adam', max_iter=2000, random_state=42),
+    train_models = [# MLPClassifier(hidden_layer_sizes=(100, 50), activation='relu', solver='adam', max_iter=2000, random_state=42),
                 RandomForestClassifier(n_estimators=300, random_state=42),
                 KNeighborsClassifier(n_neighbors=15),
-                SVC(kernel='rbf'),
+            #    SVC(kernel='rbf'),
                 DecisionTreeClassifier(random_state=42, max_depth=10)]
  
     # all_predictions = np.zeros((len(X),  len(train_models)), dtype=np.int64) 
@@ -51,8 +51,8 @@ if __name__ == "__main__":
     value, counts = np.unique(final_result, return_counts=True)
     print(dict(zip(value, counts)))
 
-    final_result = np.where(final_result  <= 2, 0, 
-                        np.where(final_result  <= 8, 1, 2))
+    final_result = np.where(final_result  <= 1, 0, 
+                        np.where(final_result  <= 4, 1, 2))
     
     # final_result = stats.mode(all_predictions,  axis=1)[0].flatten()
 

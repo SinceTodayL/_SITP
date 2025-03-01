@@ -45,7 +45,7 @@ for flod_idx, (train_idx, test_idx) in enumerate(kf.split(X)):
     X_train_res, y_train_res = smote.fit_resample(X_train_scaled, y_train_layer1)
 
     # train desicion tree model 
-    model_layer1 = DecisionTreeClassifier(random_state=41, max_depth=10)  # 确定模型参数
+    model_layer1 = DecisionTreeClassifier(random_state=42, max_depth=10)  # 确定模型参数
     model_layer1.fit(X_train_res, y_train_res)                            # 传入训练集，训练模型          
     # predict
     y_pred_layer1 = model_layer1.predict(X_test_scaled)                   # 使用模型
