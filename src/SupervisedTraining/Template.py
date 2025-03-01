@@ -30,7 +30,7 @@ def SupervisedTraining(X, y, train_model,
         y_train, y_test = y[train_idx], y[test_idx]
 
         if IfSMOTE:
-            smote = SMOTE(random_state=42, k_neighbors=5)
+            smote = SMOTE(random_state=42, k_neighbors=3)
             X_train, y_train = smote.fit_resample(X_train, y_train)
 
         if IfStandard:
