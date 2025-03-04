@@ -31,7 +31,8 @@ all_model = [   ('mlp', MLPClassifier(hidden_layer_sizes=(100, 50), activation='
                 ('rf', RandomForestClassifier(n_estimators=300, random_state=42)),
                 ('knn', KNeighborsClassifier(n_neighbors=15)),
                 ('svc', SVC(kernel='rbf')),
-                ('dt', DecisionTreeClassifier(random_state=42, max_depth=10))]
+                ('dt', DecisionTreeClassifier(random_state=42, max_depth=10)),
+                ]
 
 meta_model = LogisticRegression(random_state=42)
 
