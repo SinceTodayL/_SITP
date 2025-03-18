@@ -11,9 +11,127 @@ from sklearn.metrics import confusion_matrix, classification_report, roc_curve, 
 from imblearn.metrics import geometric_mean_score
 
 import matplotlib.pyplot as plt
+from sklearn.metrics import precision_recall_curve, roc_curve, auc
 import seaborn as sns
 
 from threshold_opt import ThresholdOptimization_F1Score, ThresholdOptimization_Gmean
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.svm import SVC
+from sklearn.naive_bayes  import GaussianNB 
+
+
+class_names = ["Normal", "Mild", "Sereve"]
+
+def SupervisedTrainingWithoutKFold(train_model, 
+                       IfStandard, IfSMOTE, IfVisualize,
+                       threshold_opt=False,
+                       IfSave=False,X=None, y=None):
+
+    class_names = ["Normal", "Mild", "Sereve"]
+
+    data_path1 = r"E:\_SITP\data\Data.xlsx"
+    label_path1 = r"E:\_SITP\data\DataLabel.xlsx"
+
+    data_path2 = r"E:\_SITP\data\all_data\test_files\TestData.xlsx"
+    label_path2 = r"E:\_SITP\data\all_data\test_files\TestLabel.xlsx"
+
+    data1 = pd.read_excel(data_path1)
+    label1 = pd.read_excel(label_path1)
+    data2 = pd.read_excel(data_path2)
+    label2 = pd.read_excel(label_path2)
+
+    X1 = data1.iloc[ : ,  : ].values
+    y1 = label1.iloc[ : ].values.squeeze()
+
+    X2 = data2.iloc[ : ,  : ].values
+    y2 = label2.iloc[ : ].values.squeeze()
+
+    X_train, X_test, y_train, y_test = train_test_split(X1, y1, test_size=0.2, random_state=42)
+
+    if IfSMOTE:
+        smote = SMOTE(random_state=42, k_neighbors=3)
+        X_train, y_train = smote.fit_resample(X_train, y_train)
+
+    if IfStandard:
+        scaler = StandardScaler()   
+        X_train = scaler.fit_transform(X_train)
+        X_test = scaler.transform(X_test)
+        X2 = scaler.transform(X2)
+
+    train_model.fit(X_train, y_train)
+
+    test_res = train_model.predict_proba(X_train)
+    test_res1 = train_model.predict(X_train)
+
+    test_res2 = train_model.predict(X_test)
+    test_res3 = train_model.predict_proba(X_test)
+
+    if IfVisualize:
+        final_report = classification_report(y_test, test_res2, target_names=class_names, output_dict=True)
+        print(final_report)
+        cm = confusion_matrix(y_test, test_res2)
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(cm, annot=True, fmt="d", cmap="Reds", 
+                xticklabels=class_names, 
+                yticklabels=class_names)
+        plt.title("Result")
+        plt.xlabel("Predicted Label")
+        plt.ylabel("True Label")
+        plt.tight_layout()
+        plt.show()
+
+       
+        y_true = y_test
+        y_prob = test_res3
+        print(final_report)
+        y_true_bin = np.where(y_true  == 0, 1, 0)  # 正类为0，负类为1/2
+        y_score = y_prob[:, 0]    # 取0类的预测概率作为正类得分
+
+        # 计算PR曲线数据
+        precision, recall, pr_thresholds = precision_recall_curve(y_true_bin, y_score)
+        pr_auc = auc(recall, precision)
+
+        # 计算ROC曲线数据
+        fpr, tpr, roc_thresholds = roc_curve(y_true_bin, y_score)
+        roc_auc = auc(fpr, tpr)
+
+        # 创建画布
+        plt.figure(figsize=(12,  5))
+
+        # 绘制PR曲线
+        plt.subplot(1,  2, 1)
+        plt.plot(recall,  precision, color='darkorange', lw=2, 
+                label=f'PR curve (AUC = {pr_auc:.2f})')
+        plt.xlabel('Recall') 
+        plt.ylabel('Precision') 
+        plt.title('Precision-Recall  Curve (Class 0 vs Rest)')
+        plt.legend(loc='lower left')
+        plt.grid(True) 
+
+        # 绘制ROC曲线
+        plt.subplot(1,  2, 2)
+        plt.plot(fpr,  tpr, color='navy', lw=2, 
+                label=f'ROC curve (AUC = {roc_auc:.2f})')
+        plt.plot([0,  1], [0, 1], 'k--', lw=1)
+        plt.xlabel('False  Positive Rate')
+        plt.ylabel('True  Positive Rate')
+        plt.title('ROC  Curve (Class 0 vs Rest)')
+        plt.legend(loc='lower right')
+        plt.grid(True) 
+
+        plt.tight_layout() 
+        plt.show() 
+        
+
+    return train_model, scaler
+
+
+
+
 
 def SupervisedTraining(X, y, train_model, 
                        IfStandard, IfSMOTE, IfVisualize,
@@ -93,7 +211,7 @@ def SupervisedTraining(X, y, train_model,
     print(f"weighted F1-score: {weighted_f1:.4f}")
     print(f"Gmean: {gmean_test: .4f}")
 
-    return final_preds
+    return final_preds, train_model
 
 
 
@@ -204,3 +322,8 @@ def SupervisedTraining_ByStep_Order1(X, y, train_model1, train_model2,
     print(f"\nmacro f1-score F1-score: {macro_f1:.4f}")
     print(f"weighted F1-score: {weighted_f1:.4f}")
     print(f"Gmean: {gmean_test: .4f}")
+
+
+if __name__ == "__main__":
+    SupervisedTrainingWithoutKFold(train_model=RandomForestClassifier(n_estimators=300, random_state=123, max_depth=10, min_samples_split=2, class_weight='balanced'),
+                    IfStandard=True, IfSMOTE=True, IfVisualize=True)
