@@ -93,3 +93,17 @@ $V: 12288 \times 12288$ ，但是往往进行满秩分解为两个 $12288 \times
 使用了 96 个注意力头，每个注意力头有 96 层
 
 ![image-20250317193803875](./markdown_image/image-20250317193803875.png)
+
+
+
+在GPU的 VRAM 上建立变量的方法、将变量迁移到 GPU 的方法
+
+torch 中的 require_grad 参数
+
+叶子张量，非叶子张量
+
+卷积核的参数决定了卷积核的数量
+
+x.view 作用 
+
+`torch.max(tensor, dim)` 含义
