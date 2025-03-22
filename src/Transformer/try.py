@@ -1,148 +1,124 @@
-import torch 
-import torch.nn  as nn 
-from torch.utils.data  import Dataset, DataLoader 
-import pandas as pd 
-import numpy as np 
-from sklearn.metrics  import mean_absolute_error, mean_squared_error 
-from sklearn.preprocessing  import MinMaxScaler 
- 
-# 1. 数据预处理类 
-class TimeSeriesDataset(Dataset):
-    def __init__(self, data, seq_length):
-        self.data  = data 
-        self.seq_length  = seq_length 
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import os
+
+# Transformer 模型定义
+class TransformerPredictor(nn.Module):
+    def __init__(self, input_dim=4, d_model=128, nhead=8, num_layers=4, dim_feedforward=256):
+        super(TransformerPredictor, self).__init__()
+        self.input_dim = input_dim
+        self.d_model = d_model
         
-    def __len__(self):
-        return len(self.data)  - self.seq_length  
-    
-    def __getitem__(self, idx):
-        x = self.data[idx:idx  + self.seq_length] 
-        y = self.data[idx  + self.seq_length] 
-        return x, y 
- 
-# 2. Transformer 模型定义 
-class Transformer(nn.Module):
-    def __init__(self, input_dim, d_model, nhead, num_encoder_layers, num_decoder_layers):
-        super(Transformer, self).__init__()
-        self.d_model = d_model 
+        # 线性层用于将输入数据映射到 d_model 维度
+        self.input_fc = nn.Linear(input_dim, d_model)
         
-        # 输入嵌入层 
-        self.enc_embedding  = nn.Linear(input_dim, d_model)
-        self.dec_embedding  = nn.Linear(input_dim, d_model)
+        # Transformer 编码器
+        self.transformer = nn.Transformer(
+            d_model=d_model, 
+            nhead=nhead, 
+            num_encoder_layers=num_layers, 
+            num_decoder_layers=num_layers, 
+            dim_feedforward=dim_feedforward, 
+            batch_first=True
+        )
         
-        # 定义位置编码 
-        self.positional_encoding  = nn.Parameter(torch.randn(1,  28, d_model))
+        # 线性层将 d_model 维度映射回输出维度
+        self.output_fc = nn.Linear(d_model, input_dim)
+    
+    def forward(self, src):
+        # src 形状: (batch, seq_len=1127, input_dim=4)
+        if src.dim() == 2:
+            src = src.unsqueeze(0)
+
+        src = self.input_fc(src)  # (batch, seq_len, d_model)
         
-        # 定义 Transformer 编码器和解码器 
-        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead)
-        decoder_layer = nn.TransformerDecoderLayer(d_model=d_model, nhead=nhead)
+        # Transformer 需要 seq_len 维度在第二维
+        src = src.permute(1, 0, 2)  # (seq_len, batch, d_model)
         
-        self.transformer_encoder  = nn.TransformerEncoder(encoder_layer, num_encoder_layers)
-        self.transformer_decoder  = nn.TransformerDecoder(decoder_layer, num_decoder_layers)
+        # 目标序列用输入序列的最后一个时间步作为起点
+        tgt = src[-1:].repeat(1127, 1, 1)  # (1127, batch, d_model)
         
-        # 输出层 
-        self.output_layer  = nn.Linear(d_model, input_dim)
- 
-    def forward(self, src, tgt):
-        # 添加位置编码 
-        src = self.enc_embedding(src)  + self.positional_encoding[:,  :src.size(1)] 
-        tgt = self.dec_embedding(tgt)  + self.positional_encoding[:,  :tgt.size(1)] 
+        output = self.transformer(src, tgt)  # (seq_len, batch, d_model)
+        output = self.output_fc(output)  # (seq_len, batch, input_dim)
         
-        # 前向传播 
-        memory = self.transformer_encoder(src.permute(1,  0, 2))
-        output = self.transformer_decoder(tgt.permute(1,  0, 2), memory).permute(1, 0, 2)
+        return output.permute(1, 0, 2).squeeze(0)  # 还原回 (batch, seq_len, input_dim)
+
+# 生成模拟数据（14 个时间步，每个时间步是 1127×4 矩阵）
+time_steps = 8
+batch_size = 1  # 假设 batch_size=1，实际可扩展
+file_path = r'E:\_SITP\data'
+all_files = sorted([f for f in os.listdir(file_path) if f.endswith('.xlsx')]) 
+data_all = []
+for i in range(0, len(all_files), 2):
+    group = all_files[i:i+2]
+    data = []
+    for file in group:
+        df = pd.read_excel(file_path + r'\\' + file, header=0)
+        data.append(df[['value_left', 'value_right']].values)
+    data = np.hstack((data[0], data[1]))
+    data_all.append(data)
+data_all = torch.tensor(data_all, dtype=torch.float32)
+
+
+# 定义模型、损失函数、优化器
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = TransformerPredictor().to(device)
+criterion_mse = nn.MSELoss()
+criterion_mae = nn.L1Loss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+# 训练循环
+num_epochs = 100  # 训练 100 轮
+loss_history = []
+
+for epoch in range(num_epochs):
+    total_loss = 0
+    for i in range(time_steps - 1):
+        src = data_all[i].to(device)  # 当前时间步输入
+        target = data_all[i + 1].to(device)  # 目标是下一时间步
         
-        # 生成预测结果 
-        output = self.output_layer(output[:,  -1:])
-        return output 
- 
-# 3. 主函数 
-def main():
-    # 3.1 加载数据 
-    df = pd.read_excel(r'E:\_SITP\data\Data.xlsx') 
-    data = df.values  
-    
-    # 3.2 数据归一化 
-    scaler = MinMaxScaler()
-    data_normalized = scaler.fit_transform(data) 
-    
-    # 3.3 定义超参数 
-    input_dim = 4  # 每年4个特征 
-    d_model = 64 
-    nhead = 8 
-    num_encoder_layers = 3 
-    num_decoder_layers = 3 
-    seq_length = 4  # 每年4个特征 
-    
-    # 3.4 创建数据集和数据加载器 
-    dataset = TimeSeriesDataset(data_normalized, seq_length)
-    loader = DataLoader(dataset, batch_size=32, shuffle=True)
-    
-    # 3.5 初始化模型、优化器和损失函数 
-    model = Transformer(input_dim, d_model, nhead, num_encoder_layers, num_decoder_layers)
-    criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(),  lr=0.001)
-    
-    # 3.6 训练模型 
-    num_epochs = 50 
-    for epoch in range(num_epochs):
-        model.train() 
-        total_loss = 0 
+        optimizer.zero_grad()
+        output = model(src)  # 预测
+        loss_mse = criterion_mse(output, target)
+        loss_mae = criterion_mae(output, target)
+        loss = loss_mse + loss_mae  # 结合 MSE 和 MAE 计算损失
         
-        for i, (x_batch, y_batch) in enumerate(loader):
-            x_batch = x_batch.float() 
-            y_batch = y_batch.float() 
-            
-            # 将输入和目标对齐 
-            src = x_batch.view(-1,  seq_length, input_dim)
-            tgt = y_batch.view(-1,  1, input_dim)
-            
-            optimizer.zero_grad() 
-            outputs = model(src, tgt)
-            loss = criterion(outputs, tgt)
-            loss.backward() 
-            optimizer.step() 
-            
-            total_loss += loss.item() 
-            
-        avg_loss = total_loss / len(loader)
-        print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {avg_loss:.4f}')
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
     
-    # 3.7 逐步预测并计算误差 
-    model.eval() 
-    historical_data = data_normalized.copy()   # 复制原始归一化数据用于逐步预测 
-    errors_mae = []
-    errors_mse = []
-    
-    with torch.no_grad(): 
-        for year in range(6):  # 预测第2年到第7年（共6次预测）
-            current_year_idx = year * seq_length 
-            input_seq = historical_data[current_year_idx:current_year_idx + seq_length]
-            input_seq = torch.FloatTensor(input_seq).unsqueeze(0)
-            
-            # 预测下一年的数据 
-            predicted_next_year = model(input_seq, input_seq)
-            predicted_next_year = predicted_next_year.squeeze().numpy() 
-            
-            # 计算误差（如果存在真实数据）
-            if year < 6:  # 最后一年（第7年）没有后续数据用于验证 
-                true_next_year = data_normalized[current_year_idx + seq_length]
-                mae = mean_absolute_error(true_next_year, predicted_next_year)
-                mse = mean_squared_error(true_next_year, predicted_next_year)
-                
-                errors_mae.append(mae) 
-                errors_mse.append(mse) 
-                
-                print(f'Year {year+1} -> Year {year+2}:')
-                print(f'MAE: {mae:.4f}, MSE: {mse:.4f}')
-                print('-' * 50)
-            
-            # 将预测结果添加到历史数据中（用于下一步预测）
-            historical_data = np.vstack([historical_data,  predicted_next_year])
-    
-    print("\nAll Errors:")
-    print(f"MAE: {np.mean(errors_mae):.4f}") 
-    print(f"MSE: {np.mean(errors_mse):.4f}") 
- 
-if __name__ == '__main__':
-    main()
+    loss_history.append(total_loss / (time_steps - 1))
+    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {total_loss / (time_steps - 1):.6f}")
+
+# 可视化训练损失
+plt.plot(loss_history, label="Loss")
+plt.xlabel("Epochs")
+plt.ylabel("Loss")
+plt.title("Training Loss Over Time")
+plt.legend()
+plt.show()
+
+for i in range(5):
+    # 测试并可视化预测结果
+    with torch.no_grad():
+        test_input = data_all[i + 8].to(device)  # 用倒数第二个时间步预测最后一个时间步
+        predicted_output = model(test_input).cpu().numpy()
+        true_output = data_all[i + 9].cpu().numpy()
+
+
+
+    # 绘制真实值 vs 预测值（仅选取前 100 个点展示）
+    plt.figure(figsize=(20, 12))
+    for feature in range(4):
+        plt.subplot(2, 2, feature + 1)
+        plt.plot(true_output[ 200:400, feature], label="True")
+        plt.plot(predicted_output[ 200:400, feature], label="Predicted", linestyle="dashed")
+        plt.xlabel("Time Step")
+        plt.ylabel(f"Feature {feature+1}")
+        plt.legend()
+    plt.suptitle("Transformer Prediction vs True Data")
+    plt.show()
