@@ -27,7 +27,7 @@ for year_group in range(num_year_groups):
         end_sample_idx = start_sample_idx + b  
 
         fig = plt.figure(figsize=(20, 12))
-        ax = fig.add_subplot(111, projection='2d')
+        ax = fig.add_subplot(111, projection='3d')
 
         colors = plt.cm.jet(np.linspace(0, 1, len(files)))
 
