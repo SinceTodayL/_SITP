@@ -6,6 +6,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 from sklearn.decomposition import PCA
+import math
+
+
 
 
 """
@@ -14,8 +17,18 @@ from sklearn.decomposition import PCA
 
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, max_len=5000):
+        """
+        Args:
+            d_model: Dimension of the model (embedding size)
+            max_len: Maximum sequence length
+        """
         super().__init__()
-        self.pe = nn.Parameter(torch.zeros(max_len, d_model))
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        self.register_buffer('pe', pe)  # Prevents the tensor from being updated by the optimizer
 
     def forward(self, x):
         """
@@ -25,11 +38,19 @@ class PositionalEncoding(nn.Module):
             x + positional encoding of shape (seq_len, batch_size, d_model)
         """
         seq_len = x.size(0)
-        # Add positional encoding to each time step.
         return x + self.pe[:seq_len, :].unsqueeze(1)
 
 class TransformerPredictor(nn.Module):
-    def __init__(self, input_dim=4, d_model=128, nhead=8, num_layers=6, dim_feedforward=256):
+    def __init__(self, input_dim=4, d_model=128, nhead=8, num_layers=6, dim_feedforward=256, mask_ratio=0.1):
+        """
+        Args:
+            input_dim: Number of input features per sample (4)
+            d_model: Transformer model dimension (128)
+            nhead: Number of attention heads (8)
+            num_layers: Number of Transformer encoder layers (6)
+            dim_feedforward: Dimension of the feedforward network (256)
+            mask_ratio: Ratio of time steps to be masked (default: 10%)
+        """
         super(TransformerPredictor, self).__init__()
         self.input_fc = nn.Linear(input_dim, d_model)
         self.positional_encoding = PositionalEncoding(d_model)
@@ -38,6 +59,22 @@ class TransformerPredictor(nn.Module):
             num_layers=num_layers
         )
         self.output_fc = nn.Linear(d_model, input_dim)
+        self.mask_ratio = mask_ratio
+
+    def generate_time_mask(self, seq_len):
+        """
+        Generates a time mask to randomly mask certain time steps.
+        
+        Args:
+            seq_len: Length of the input sequence
+        Returns:
+            mask: Tensor of shape (seq_len, seq_len) with 0s at masked positions
+        """
+        mask = torch.ones(seq_len, seq_len)
+        num_masked = int(seq_len * self.mask_ratio)
+        masked_indices = torch.randperm(seq_len)[:num_masked]
+        mask[:, masked_indices] = 0  # Masking specific time steps
+        return mask
 
     def forward(self, src):
         """
@@ -50,10 +87,15 @@ class TransformerPredictor(nn.Module):
         """
         src = self.input_fc(src)  # (seq_len, batch_size, d_model)
         src = self.positional_encoding(src)
-        mask = nn.Transformer.generate_square_subsequent_mask(src.size(0)).to(src.device)
-        output = self.transformer_encoder(src, mask=mask)
+        
+        # Generate time mask
+        seq_len = src.size(0)
+        time_mask = self.generate_time_mask(seq_len).to(src.device)
+        
+        output = self.transformer_encoder(src, mask=time_mask)
         output = self.output_fc(output) 
         return output
+
 
 
 
@@ -176,7 +218,7 @@ for i in range(0):
 from mpl_toolkits.mplot3d import Axes3D
 
 model.eval()  # Set model to evaluation mode
-num_future = 100
+num_future = 10
 predicted_years = []  
 
 # Start with the full history (all 14 years) as the initial input.
