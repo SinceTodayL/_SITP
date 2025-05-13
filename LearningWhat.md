@@ -46,7 +46,7 @@ X = data.iloc[ : ,  : ].values
 y = label.iloc[ : ].values
 
 scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+X_scaled = scaler.fit_transform(X)  # 是对每一列进行标准化！
 
 # 这里 random_state 的设置是为了让每一次的划分结果一致，便于实验重现
 X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size = 0.3, random_state = 30)

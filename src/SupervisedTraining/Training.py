@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 from template import SupervisedTraining, SupervisedTraining_ByStep_Order1, SupervisedTrainingWithoutKFold
-from dim_reducer import DimensionReducer
+# from dim_reducer import DimensionReducer
 
 from sklearn.preprocessing import StandardScaler
 
@@ -43,32 +43,33 @@ if __name__ == "__main__":
     data_path1 = r"E:\_SITP\data\Data.xlsx"
     label_path1 = r"E:\_SITP\data\DataLabel.xlsx"
 
-    data_path2 = r"E:\_SITP\data\all_data\test_files\TestData.xlsx"
-    label_path2 = r"E:\_SITP\data\all_data\test_files\TestLabel.xlsx"
+    # data_path2 = r"E:\_SITP\data\all_data\test_files\TestData.xlsx"
+    # label_path2 = r"E:\_SITP\data\all_data\test_files\TestLabel.xlsx"
 
     data1 = pd.read_excel(data_path1)
     label1 = pd.read_excel(label_path1)
 
-    data2 = pd.read_excel(data_path2)
-    label2 = pd.read_excel(label_path2)
+    # data2 = pd.read_excel(data_path2)
+    # label2 = pd.read_excel(label_path2)
 
     X1 = data1.iloc[ : ,  : ].values
     y1 = label1.iloc[ : ].values.squeeze()
 
-    X2 = data2.iloc[ : ,  : ].values
-    y2 = label2.iloc[ : ].values.squeeze()
+    # X2 = data2.iloc[ : ,  : ].values
+    # y2 = label2.iloc[ : ].values.squeeze()
 
     # X_res_pca = DimensionReducer(method='pca', n_components=7).fit_transform(X)
     # X_res_umap = DimensionReducer(method='umap', n_components=4).fit_transform(X)
 
-    model_trained, scaler_trained = SupervisedTrainingWithoutKFold(X=X1, y=y1, train_model=RandomForestClassifier(n_estimators=300, random_state=123, max_depth=10, min_samples_split=2),
+    model_trained, scaler_trained = SupervisedTraining(X=X1, y=y1, train_model=RandomForestClassifier(n_estimators=300, random_state=123, max_depth=10, min_samples_split=2),
                     IfStandard=True, IfSMOTE=False, IfVisualize=True)
     
-    X2 = scaler_trained.fit_transform(X2)
+    # X2 = scaler_trained.fit_transform(X2)
 
     # X1 = scaler_trained.transform(X1)
-    res = model_trained.predict_proba(X2)
+    # res = model_trained.predict_proba(X2)
 
+    """
     from collections import Counter
     counts = Counter(y2)
     total = len(y2)
@@ -158,6 +159,8 @@ if __name__ == "__main__":
         
     # final_report = classification_report(y, final_result, target_names=class_names, output_dict=True)
     # with_pca.append(final_report['macro avg']['f1-score'])
+
+    """
 
     """
     for model in train_models:

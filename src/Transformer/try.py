@@ -6,17 +6,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 
-# Transformer 模型定义
 class TransformerPredictor(nn.Module):
     def __init__(self, input_dim=4, d_model=128, nhead=8, num_layers=4, dim_feedforward=256):
         super(TransformerPredictor, self).__init__()
         self.input_dim = input_dim
         self.d_model = d_model
         
-        # 线性层用于将输入数据映射到 d_model 维度
         self.input_fc = nn.Linear(input_dim, d_model)
         
-        # Transformer 编码器
         self.transformer = nn.Transformer(
             d_model=d_model, 
             nhead=nhead, 
@@ -25,8 +22,6 @@ class TransformerPredictor(nn.Module):
             dim_feedforward=dim_feedforward, 
             batch_first=True
         )
-        
-        # 线性层将 d_model 维度映射回输出维度
         self.output_fc = nn.Linear(d_model, input_dim)
     
     def forward(self, src):
@@ -46,10 +41,9 @@ class TransformerPredictor(nn.Module):
         output = self.output_fc(output)  # (seq_len, batch, input_dim)
         
         return output.permute(1, 0, 2).squeeze(0)  # 还原回 (batch, seq_len, input_dim)
-
-# 生成模拟数据（14 个时间步，每个时间步是 1127×4 矩阵）
+    
 time_steps = 8
-batch_size = 1  # 假设 batch_size=1，实际可扩展
+batch_size = 1 
 file_path = r'E:\_SITP\data'
 all_files = sorted([f for f in os.listdir(file_path) if f.endswith('.xlsx')]) 
 data_all = []
@@ -64,28 +58,28 @@ for i in range(0, len(all_files), 2):
 data_all = torch.tensor(data_all, dtype=torch.float32)
 
 
-# 定义模型、损失函数、优化器
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = TransformerPredictor().to(device)
 criterion_mse = nn.MSELoss()
 criterion_mae = nn.L1Loss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-# 训练循环
-num_epochs = 100  # 训练 100 轮
+
+num_epochs = 100  
 loss_history = []
 
 for epoch in range(num_epochs):
     total_loss = 0
     for i in range(time_steps - 1):
-        src = data_all[i].to(device)  # 当前时间步输入
-        target = data_all[i + 1].to(device)  # 目标是下一时间步
+        src = data_all[i].to(device)  
+        target = data_all[i + 1].to(device) 
         
         optimizer.zero_grad()
-        output = model(src)  # 预测
+        output = model(src) 
         loss_mse = criterion_mse(output, target)
         loss_mae = criterion_mae(output, target)
-        loss = loss_mse + loss_mae  # 结合 MSE 和 MAE 计算损失
+        loss = loss_mse + loss_mae  
         
         loss.backward()
         optimizer.step()
@@ -94,8 +88,8 @@ for epoch in range(num_epochs):
     loss_history.append(total_loss / (time_steps - 1))
     print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {total_loss / (time_steps - 1):.6f}")
 
-# 可视化训练损失
-plt.plot(loss_history, label="Loss")
+
+plt(loss_history, label="Loss")
 plt.xlabel("Epochs")
 plt.ylabel("Loss")
 plt.title("Training Loss Over Time")
@@ -103,15 +97,11 @@ plt.legend()
 plt.show()
 
 for i in range(5):
-    # 测试并可视化预测结果
     with torch.no_grad():
-        test_input = data_all[i + 8].to(device)  # 用倒数第二个时间步预测最后一个时间步
+        test_input = data_all[i + 8].to(device) 
         predicted_output = model(test_input).cpu().numpy()
         true_output = data_all[i + 9].cpu().numpy()
 
-
-
-    # 绘制真实值 vs 预测值（仅选取前 100 个点展示）
     plt.figure(figsize=(20, 12))
     for feature in range(4):
         plt.subplot(2, 2, feature + 1)

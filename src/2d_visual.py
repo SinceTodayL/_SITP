@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 file_path = r"E:\\_SITP\\data\\pca_to_1dim"
 a = 14
-b = 75 
+b = 300
 
 num_year_groups = 14 // a  
 num_sample_groups = 1127 // b 
@@ -30,7 +30,7 @@ for year_group in range(num_year_groups):
         colors = plt.cm.jet(np.linspace(0, 1, len(files)))
 
         for i in range(start_year_idx, end_year_idx):
-            if i in [0, 5, 6, 8, 9]:
+            if i in [2, 4, 6, 9, 11, 12]:
                 continue
             z = X[i, start_sample_idx:end_sample_idx]
             y = np.full(b, i - start_year_idx + 1)

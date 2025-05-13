@@ -36,19 +36,19 @@ def SupervisedTrainingWithoutKFold(train_model,
     data_path1 = r"E:\_SITP\data\Data.xlsx"
     label_path1 = r"E:\_SITP\data\DataLabel.xlsx"
 
-    data_path2 = r"E:\_SITP\data\all_data\test_files\TestData.xlsx"
-    label_path2 = r"E:\_SITP\data\all_data\test_files\TestLabel.xlsx"
+    # data_path2 = r"E:\_SITP\data\all_data\test_files\TestData.xlsx"
+    # label_path2 = r"E:\_SITP\data\all_data\test_files\TestLabel.xlsx"
 
     data1 = pd.read_excel(data_path1)
     label1 = pd.read_excel(label_path1)
-    data2 = pd.read_excel(data_path2)
-    label2 = pd.read_excel(label_path2)
+    # data2 = pd.read_excel(data_path2)
+    # label2 = pd.read_excel(label_path2)
 
     X1 = data1.iloc[ : ,  : ].values
     y1 = label1.iloc[ : ].values.squeeze()
 
-    X2 = data2.iloc[ : ,  : ].values
-    y2 = label2.iloc[ : ].values.squeeze()
+    # X2 = data2.iloc[ : ,  : ].values
+    # y2 = label2.iloc[ : ].values.squeeze()
 
     X_train, X_test, y_train, y_test = train_test_split(X1, y1, test_size=0.2, random_state=42)
 
@@ -60,12 +60,14 @@ def SupervisedTrainingWithoutKFold(train_model,
         scaler = StandardScaler()   
         X_train = scaler.fit_transform(X_train)
         X_test = scaler.transform(X_test)
-        X2 = scaler.transform(X2)
+        # X2 = scaler.transform(X2)
 
     train_model.fit(X_train, y_train)
 
     test_res = train_model.predict_proba(X_train)
     test_res1 = train_model.predict(X_train)
+
+
 
     test_res2 = train_model.predict(X_test)
     test_res3 = train_model.predict_proba(X_test)
@@ -164,6 +166,14 @@ def SupervisedTraining(X, y, train_model,
         if IfVisualize:
             print(f"\nFlod {flod_idx + 1} Classification Report:")
             print(classification_report(y_test, final_preds[test_idx], target_names=class_name))
+
+    df = pd.DataFrame(final_preds)
+    df.to_excel("result.xlsx", index = False)
+    nums = [0, 0, 0]
+    for i in final_preds:
+        nums[i]+=1
+    for i in range(3):
+        print(nums[i])
 
     if IfVisualize:
         # confusion matrix
@@ -326,4 +336,4 @@ def SupervisedTraining_ByStep_Order1(X, y, train_model1, train_model2,
 
 if __name__ == "__main__":
     SupervisedTrainingWithoutKFold(train_model=RandomForestClassifier(n_estimators=300, random_state=123, max_depth=10, min_samples_split=2, class_weight='balanced'),
-                    IfStandard=True, IfSMOTE=True, IfVisualize=True)
+                    IfStandard=True, IfSMOTE=False, IfVisualize=True)
